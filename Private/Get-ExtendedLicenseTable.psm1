@@ -21,12 +21,17 @@ function Get-ExtendedLicenseTable {
 
     $html = [HtmlAgilityPack.HtmlDocument]::new()
     $html.LoadHtml($Response.content)
-    $SKUTable = $html.DocumentNode.SelectNodes("//div[@class='wp-block-syntaxhighlighter-code ' and contains(., 'skuids = @{')]").FirstChild.InnerText
+    $SKUTable = $html.DocumentNode.SelectNodes("//pre[contains(., 'skuids = @{')]").InnerText
 
-    $StringContent = $SKUTable -replace "\`$skuids = @{|}|'", '' -split ';'
+    $StringContent = $SKUTable.Trim().TrimStart('$skuids = @{').TrimEnd('}').Split(';').Trim() | .{process{
+        # can't filter with a better regex since Microsoft doesn't always adhere to their standard SKU format 
+        if ($_ -match "^'.*'='.*'$" ) { $_ }
+        else { Write-Warning -Message 'Strange results were returned for extended table'}
+    }}
+
     foreach ($line in $StringContent) {
-        $Split = $line.Split('=').Trim()
-        $ExtendedLookup[$($Split[0])] = $Split[1]
+        $SKU, $Name = $line.Split('=')[0,1].Trim().Trim("'")
+        $ExtendedLookup[$SKU] = $Name
     }
 
     return $ExtendedLookup

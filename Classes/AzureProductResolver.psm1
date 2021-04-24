@@ -7,6 +7,7 @@ using module .\..\Private\Get-MSLicenseTable.psm1
 class AzureProductResolver {
     hidden [AzureProductList] $MSLicenseTable
     hidden [hashtable] $ExtendedLicenseTable
+    [ValidateRange(1,4)]
     hidden [int] $LookupMode
     
     AzureProductResolver () {
