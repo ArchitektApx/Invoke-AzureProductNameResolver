@@ -24,8 +24,7 @@ function Get-ExtendedLicenseTable {
     $SKUTable = $html.DocumentNode.SelectNodes("//pre[contains(., 'skuids = @{')]").InnerText
 
     $StringContent = $SKUTable.Trim().TrimStart('$skuids = @{').TrimEnd('}').Split(';').Trim() | .{process{
-        # can't filter with better since Microsoft doesn't always adhere to their standard SKU format 
-        # WIN10_VDA_E3_VIRTUALIZATION RIGHTS FOR WINDOWS 10 (E3/E5+VDA)'
+        # can't filter with a better regex since Microsoft doesn't always adhere to their standard SKU format 
         if ($_ -match "^'.*'='.*'$" ) { $_ }
         else { Write-Warning -Message 'Strange results were returned for extended table'}
     }}

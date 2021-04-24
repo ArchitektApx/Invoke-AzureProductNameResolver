@@ -34,7 +34,7 @@ function Get-MSLicenseTable {
         #>
         $RowCells = $Row.SelectNodes('td')
 
-        # Filter out the last tds with non-compatible services that only list 2 properties (SKU and GUID)
+        # Filter out non-compatible services that only list 2 properties (SKU and GUID) and unexpecte ones
         switch ($RowCells.count) {
             5 {
                 # output the main product
