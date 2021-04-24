@@ -19,7 +19,10 @@ function Get-MSLicenseTable {
 
     $html = [HtmlAgilityPack.HtmlDocument]::new()
     $html.LoadHtml($Response.content)
-    $TableRows = $html.DocumentNode.SelectNodes('//table//tbody//tr').InnerHTML
+    $TableRows = $html.DocumentNode.SelectNodes('//table/tbody/tr')
+
+    # used inside the foreach to warn only once on malformed results
+    $AlreadyWarned = $false 
     
     $Output = foreach ($Row in $TableRows) {
         <#
@@ -29,37 +32,49 @@ function Get-MSLicenseTable {
             $RowCells[3] = included service plans SKUs/StringIDs and GUIDs
             $RowCells[4] = included service plans productNames and GUIDs
         #>
-        $RowCells = ($Row | Select-String -Pattern '<td>(.*?)</td>' -AllMatches).Matches | ForEach-Object { $_.Groups[1].Value }
+        $RowCells = $Row.SelectNodes('td')
 
-        # Filter out the last tables with non-compatible services that only liste 2 properties (SKU and GUID)
-        if ($RowCells.count -gt 2) {
+        # Filter out the last tds with non-compatible services that only list 2 properties (SKU and GUID)
+        switch ($RowCells.count) {
+            5 {
+                # output the main product
+                [AzureProduct]::new(
+                    $RowCells[2].InnerHtml,
+                    $RowCells[1].InnerHtml,
+                    $RowCells[0].InnerHtml
+                )
 
-            # output the main product
-            [AzureProduct]::new(
-                $RowCells[2],
-                $RowCells[1],
-                $RowCells[0]
-            )
+                if ($RowCells[3]) {
+                    # create a Lookup Hashtable with each GUID:ProductName pair
+                    $GuidToNameHt = @{}
+                    foreach ($PlanName in $RowCells[4].SelectNodes('text()')) {
+                        $ProdName, $GUID = ($PlanName.InnerText -split '\((?!.*\()')[0,1].Trim()
+                        $GUID = $GUID.TrimEnd(')')
+                        $GuidToNameHt[$GUID ] = $ProdName
+                    }
 
-            if ($RowCells[3]) {
-                # create a Lookup Hashtable with each GUID:ProductName pair
-                $GuidToNameHt = @{}
-                foreach ($Plan in ($RowCells[4] -Split '<br>')) {
-                    $Split = ($Plan -split '\((?!.*\()').Trim(')').Trim()
-                    $GuidToNameHt[$Split[1]] = $Split[0]
+                    foreach ($PlanSKU in $RowCells[3].SelectNodes('text()')) {
+                        $SKU, $GUID = ($PlanSKU.InnerText -split '\((?!.*\()')[0,1].Trim()
+                        $GUID = $GUID.TrimEnd(')')
+                        # resolve the SKUs GUID to a productname, if no product name exists use the SKU as its Name
+                        $Name = if ($null -ne $GuidToNameHt[$GUID]) { $GuidToNameHt[$GUID] } else { $SKU }
+
+                        #output each included product
+                        [AzureProduct]::New(
+                            $GUID,
+                            $SKU,
+                            $Name
+                        )
+                    }
                 }
+            }
+            2 { 
 
-                foreach ($SKU in ($RowCells[3] -Split '<br>')) {
-                    $Split = ($SKU -split '\((?!.*\()').Trim(')').Trim()
-                    # resolve the SKUs GUID to a productname, if no product name exists use the SKU as its Name
-                    $Name = if ($null -ne $GuidToNameHt[$Split[1]]) { $GuidToNameHt[$Split[1]] } else { $Split[0] }
-
-                    #output each included product
-                    [AzureProduct]::New(
-                        $Split[1],
-                        $Split[0],
-                        $Name
-                    )
+            }
+            default {
+                if ($AlreadyWarned -eq $false) {
+                    Write-Warning 'Strange results were returned for microsoft table'
+                    $AlreadyWarned = $true
                 }
             }
         }
