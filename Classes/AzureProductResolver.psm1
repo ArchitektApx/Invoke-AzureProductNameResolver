@@ -7,7 +7,7 @@ using module .\..\Private\Get-MSLicenseTable.psm1
 class AzureProductResolver {
     hidden [AzureProductList] $MSLicenseTable
     hidden [hashtable] $ExtendedLicenseTable
-    [ValidateRange(1,4)]
+    [ValidateRange(1, 4)]
     hidden [int] $LookupMode
     
     AzureProductResolver () {
@@ -136,11 +136,11 @@ class AzureProductResolver {
         return $null
     }
 
-    [string] ResolveSKUtoName ($SKU) {
+    [string] ResolveSKUtoName ([string]$SKU) {
         return $this.ResolveLookupModeSwitch($SKU, 'SKU', 'Name')
     }
 
-    [string] ResolveNameToSKU ($Name) {
+    [string] ResolveNameToSKU ([string]$Name) {
         return $this.ResolveLookupModeSwitch($Name, 'Name', 'SKU')
     }
 
