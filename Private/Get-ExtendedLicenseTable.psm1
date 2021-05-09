@@ -23,14 +23,15 @@ function Get-ExtendedLicenseTable {
     $html.LoadHtml($Response.content)
     $SKUTable = $html.DocumentNode.SelectNodes("//pre[contains(., 'skuids = @{')]").InnerText
 
-    $StringContent = $SKUTable.Trim().TrimStart('$skuids = @{').TrimEnd('}').Split(';').Trim() | .{process{
-        # can't filter with a better regex since Microsoft doesn't always adhere to their standard SKU format 
-        if ($_ -match "^'.*'='.*'$" ) { $_ }
-        else { Write-Warning -Message 'Strange results were returned for extended table'}
-    }}
+    $StringContent = $SKUTable.Trim().TrimStart('$skuids = @{').TrimEnd('}').Split([System.Environment]::NewLine).TrimEnd(';').Trim() | . { process {
+            # can't filter with a better regex since Microsoft doesn't always adhere to their standard SKU format 
+            if ($_ -match "^'.*'='.*'$" ) { $_ }
+            elseif ( $_ -eq '') {}
+            else { Write-Warning -Message 'Strange results were returned for extended table' }
+        } }
 
     foreach ($line in $StringContent) {
-        $SKU, $Name = $line.Split('=')[0,1].Trim().Trim("'")
+        $SKU, $Name = $line.Split('=')[0, 1].Trim().Trim("'")
         $ExtendedLookup[$SKU] = $Name
     }
 
